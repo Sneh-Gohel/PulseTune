@@ -90,11 +90,14 @@ class _SplashScreen extends State<SplashScreen>
                   child: ClipRRect(
                     child: Padding(
                       padding: const EdgeInsets.all(10),
-                      child: Image.asset(
-                        "assets/photos/logo.png",
-                        width: 130,
-                        height: 130,
-                        fit: BoxFit.contain,
+                      child: Hero(
+                        tag: "logo",
+                        child: Image.asset(
+                          "assets/photos/logo.png",
+                          width: 130,
+                          height: 130,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),

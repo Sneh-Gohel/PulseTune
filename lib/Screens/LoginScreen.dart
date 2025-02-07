@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:plusetune/Components/ScreenChanger.dart';
+import 'package:plusetune/Screens/SignUpScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -180,21 +182,39 @@ class _LoginScreenState extends State<LoginScreen>
                       curve: Curves.easeOutBack,
                     ),
                   ),
-                  child: ElevatedButton(
-                    onPressed: _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                  child: Hero(
+                    tag: "button",
+                    flightShuttleBuilder: (flightContext, animation,
+                        flightDirection, fromHeroContext, toHeroContext) {
+                      final button = flightDirection == HeroFlightDirection.push
+                          ? toHeroContext.widget
+                          : fromHeroContext.widget;
+
+                      return Material(
+                        color: Colors.transparent,
+                        child: Transform.scale(
+                          scale: Tween<double>(begin: 0.95, end: 1.0)
+                              .evaluate(animation),
+                          child: button,
+                        ),
+                      );
+                    },
+                    child: ElevatedButton(
+                      onPressed: _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Log in',
-                      style: TextStyle(
-                        color: Color(0xFFDD7CA9),
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                      child: const Text(
+                        'Log in',
+                        style: TextStyle(
+                          color: Color(0xFFDD7CA9),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -245,10 +265,10 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Center(
                       child: TextButton(
                         onPressed: () {
-                          // Navigator.push(
-                          //   context,
-                          //   CustomTransitions.slideUpTransition(const SignUpScreen()),
-                          // );
+                          Navigator.of(context).push(
+                            ScreenChanger.slideUpTransition(
+                                const SignUpScreen()),
+                          );
                         },
                         child: const Text.rich(
                           TextSpan(

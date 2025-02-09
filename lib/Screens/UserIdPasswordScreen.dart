@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 class UserIdPasswordScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -47,11 +48,12 @@ class _UserIdPasswordScreenState extends State<UserIdPasswordScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -70,6 +72,15 @@ class _UserIdPasswordScreenState extends State<UserIdPasswordScreen>
                     opacity: _opacityAnimation,
                     child: Column(
                       children: [
+                        Center(
+                          child: Lottie.asset(
+                            'assets/lotties/signup.json', // Path to your Lottie file
+                            width: 200, // Adjust width as needed
+                            height: 250, // Adjust height as needed
+                            fit: BoxFit.fill,
+                            repeat: true,
+                          ),
+                        ),
                         const Text(
                           'Create Credentials',
                           style: TextStyle(
@@ -102,21 +113,24 @@ class _UserIdPasswordScreenState extends State<UserIdPasswordScreen>
                           ),
                         ),
                         const SizedBox(height: 40),
-                        ElevatedButton(
-                          onPressed: _completeRegistration,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _completeRegistration,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
                             ),
-                          ),
-                          child: const Text(
-                            'Complete Registration',
-                            style: TextStyle(
-                              color: Color(0xFFDD7CA9),
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+                            child: const Text(
+                              'Complete Registration',
+                              style: TextStyle(
+                                color: Color(0xFFDD7CA9),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),

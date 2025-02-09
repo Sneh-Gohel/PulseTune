@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Screens/UserIdPasswordScreen.dart';
+import 'package:lottie/lottie.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String email;
@@ -54,11 +55,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -77,6 +79,19 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
                     opacity: _opacityAnimation,
                     child: Column(
                       children: [
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 20, left: 00, right: 60, bottom: 40),
+                          child: Center(
+                            child: Lottie.asset(
+                              'assets/lotties/otp.json', // Path to your Lottie file
+                              width: 200, // Adjust width as needed
+                              height: 150, // Adjust height as needed
+                              fit: BoxFit.fill,
+                              repeat: true,
+                            ),
+                          ),
+                        ),
                         const Text(
                           'Verify OTP',
                           style: TextStyle(
@@ -102,32 +117,42 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
                           ),
                           keyboardType: TextInputType.number,
                         ),
-                        const SizedBox(height: 30),
-                        ElevatedButton(
-                          onPressed: _verifyOTP,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                          child: const Text(
-                            'Verify',
-                            style: TextStyle(
-                              color: Color(0xFFDD7CA9),
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              // Resend OTP logic
+                            },
+                            child: const Text(
+                              'Resend OTP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            // Resend OTP logic
-                          },
-                          child: const Text(
-                            'Resend OTP',
-                            style: TextStyle(color: Colors.white),
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity, // Full width button
+                          child: ElevatedButton(
+                            onPressed: _verifyOTP,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: const Text(
+                              'Verify',
+                              style: TextStyle(
+                                color: Color(0xFFDD7CA9),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -144,7 +169,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen>
 
   void _verifyOTP() {
     if (_otpController.text.length == 6) {
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         ScreenChanger.slideUpTransition(
           UserIdPasswordScreen(userData: widget.userData),

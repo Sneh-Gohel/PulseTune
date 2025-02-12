@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
+import 'package:plusetune/Screens/HomeScreen.dart';
 import 'package:plusetune/Screens/SignUpScreen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -158,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen>
                           onChanged: (value) =>
                               setState(() => _rememberMe = value!),
                           checkColor: Colors.white,
-                          fillColor: MaterialStateProperty.all(Colors.white54),
+                          fillColor: WidgetStateProperty.all(Colors.white54),
                         ),
                         const Text('Remember me',
                             style: TextStyle(color: Colors.white)),
@@ -316,6 +317,9 @@ class _LoginScreenState extends State<LoginScreen>
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
       // Add login logic
+      Navigator.of(context).pushReplacement(
+        ScreenChanger.slideUpTransition(const HomeScreen()),
+      );
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:plusetune/Components/BigBoxes.dart';
 import 'package:plusetune/Components/RowTiles.dart';
 
@@ -9,11 +10,12 @@ class HomeScreen extends StatefulWidget {
   State<StatefulWidget> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   double _scrollOffset = 0.0;
   final double _scrollThreshold = 100.0;
   String _greetingMessage = "";
+  late AnimationController _lottieController;
 
   @override
   void initState() {
@@ -24,11 +26,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _scrollOffset = _scrollController.offset;
       });
     });
+    _lottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2), // Adjust duration for speed
+    )..repeat();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _lottieController.dispose();
     super.dispose();
   }
 
@@ -211,6 +218,203 @@ class _HomeScreenState extends State<HomeScreen> {
                     title_2: "Yoga",
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Stack(
+                    children: [
+                      // Glowing border
+                      TweenAnimationBuilder(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 3),
+                        curve: Curves.linear,
+                        builder: (context, value, child) {
+                          return Container(
+                            height: 154, // 150 + 4px border
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color.fromARGB(255, 226, 104, 104)
+                                      .withOpacity(0.3),
+                                  Colors.transparent,
+                                  const Color.fromARGB(255, 226, 104, 104)
+                                      .withOpacity(0.3),
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                                begin: _getGradientAlignment(value),
+                                end: _getGradientAlignment(value + 0.5),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      // Main content
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF2C2C2C).withOpacity(0.8),
+                              const Color(0xFF1A1A1A).withOpacity(0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 150,
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(15),
+                                  bottomLeft: Radius.circular(15),
+                                ),
+                                child: Lottie.asset(
+                                  'assets/lotties/heart_beat.json',
+                                  fit: BoxFit.cover,
+                                  repeat: true,
+                                  controller: _lottieController,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                child: ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      const LinearGradient(
+                                    colors: [Colors.white, Color(0xFFDD7CA9)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ).createShader(bounds),
+                                  child: Text(
+                                    "Sync your music\nto your heartbeat",
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.2,
+                                      letterSpacing: 0.5,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(2, 2),
+                                        )
+                                      ],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Stack(
+                    children: [
+                      // Glowing border
+                      TweenAnimationBuilder(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 3),
+                        curve: Curves.linear,
+                        builder: (context, value, child) {
+                          return Container(
+                            height: 154, // 150 + 4px border
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(100),
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFDD7CA9).withOpacity(0.3),
+                                  Colors.transparent,
+                                  const Color(0xFFDD7CA9).withOpacity(0.3),
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                                begin: _getGradientAlignment(value),
+                                end: _getGradientAlignment(value + 0.5),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      // Main content
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF2C2C2C).withOpacity(0.8),
+                              const Color(0xFF1A1A1A).withOpacity(0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 150,
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(15),
+                                  bottomLeft: Radius.circular(15),
+                                ),
+                                child: Lottie.asset(
+                                  'assets/lotties/music_gen_home.json',
+                                  fit: BoxFit.cover,
+                                  repeat: true,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                child: ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      const LinearGradient(
+                                    colors: [Colors.white, Color(0xFFDD7CA9)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ).createShader(bounds),
+                                  child: Text(
+                                    "Generate a music\nin your mood",
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.2,
+                                      letterSpacing: 0.5,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(2, 2),
+                                        )
+                                      ],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const Padding(
                   padding: EdgeInsets.only(top: 40),
                   child: Text(
@@ -222,7 +426,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                // Replace the existing Padding containing BigBoxes with this:
                 Padding(
                   padding: const EdgeInsets.only(top: 30),
                   child: SizedBox(
@@ -263,5 +466,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Alignment _getGradientAlignment(double value) {
+    final angle = value * 4; // 0-4 for full rotation
+    if (angle < 1) return Alignment(-1 + 2 * angle, -1); // Left to Top
+    if (angle < 2) return Alignment(1, -1 + 2 * (angle - 1)); // Top to Right
+    if (angle < 3) return Alignment(1 - 2 * (angle - 2), 1); // Right to Bottom
+    return Alignment(-1, 1 - 2 * (angle - 3)); // Bottom to Left
   }
 }

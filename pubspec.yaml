@@ -71,6 +71,7 @@ flutter:
     - assets/lotties/otp.json
     - assets/lotties/signup.json
     - assets/lotties/music_gen_home.json
+    - assets/lotties/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

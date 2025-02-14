@@ -1,10 +1,13 @@
-// ignore_for_file: deprecated_member_use
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:plusetune/Components/BigBoxes.dart';
 import 'package:plusetune/Components/RowTiles.dart';
+import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Components/SuffleBox.dart';
+import 'package:plusetune/Screens/MusicGenerationScreen.dart';
+import 'package:shimmer/shimmer.dart'; // Add shimmer package
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +22,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final double _scrollThreshold = 100.0;
   String _greetingMessage = "";
   late AnimationController _lottieController;
+  bool _isLoading = true; // Add loading state
+  final List<String> _imagePaths = [
+    "assets/photos/hip-hop.jpg",
+    "assets/photos/bass.jpg",
+    "assets/photos/sleep.jpg",
+    "assets/photos/study.jpeg",
+    "assets/photos/nature.jpg",
+    "assets/photos/yoga.jpg",
+    "assets/photos/nature.jpg",
+    "assets/photos/beauty.jpg",
+    "assets/photos/waterfall.jpg",
+    "assets/photos/small_waterfall.jpg",
+    "assets/photos/drums.jpg",
+    "assets/photos/flute.jpg",
+    "assets/photos/guitar.jpg",
+    "assets/photos/piano.jpeg",
+    "assets/photos/classical.jpg",
+    "assets/photos/disco.jpg",
+    "assets/photos/pop.jpg",
+    "assets/photos/jazz.png",
+    "assets/photos/rock.jpg",
+  ];
 
   @override
   void initState() {
@@ -31,8 +56,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
     _lottieController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2), // Adjust duration for speed
+      duration: const Duration(seconds: 2),
     )..repeat();
+
+    // Preload all images
+    _preloadImages();
+  }
+
+  // Preload all images
+  void _preloadImages() async {
+    final List<Future<void>> futures = [];
+    for (final path in _imagePaths) {
+      final image = AssetImage(path);
+      final completer = Completer<void>();
+      image.resolve(const ImageConfiguration()).addListener(
+            ImageStreamListener(
+              (image, synchronousCall) {
+                completer.complete();
+              },
+              onError: (exception, stackTrace) {
+                completer.complete();
+              },
+            ),
+          );
+      futures.add(completer.future);
+    }
+
+    // Wait for all images to load
+    await Future.wait(futures);
+
+    // Hide loading screen
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -96,6 +154,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         false;
   }
 
+  // Skeleton loading widget for horizontal lists
+  Widget _buildSkeletonLoading() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[700]!,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: List.generate(5, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 100,
+                  height: 20,
+                  color: Colors.grey[800],
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final animationFraction = _getAnimationFraction();
@@ -119,17 +212,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const Text(
                   "Welcome",
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
                 ),
                 Text(
                   _greetingMessage,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
@@ -165,10 +254,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: [
                         const Text(
                           "Welcome",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                          ),
+                          style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
                         IconButton(
                           icon: const Icon(Icons.settings, color: Colors.white),
@@ -291,10 +377,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Text(
                     "Infinite Listening",
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 Padding(
@@ -327,104 +412,113 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     title_2: "Yoga",
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Stack(
-                    children: [
-                      // Glowing border
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(seconds: 3),
-                        curve: Curves.linear,
-                        builder: (context, value, child) {
-                          return Container(
-                            height: 124, // 150 + 4px border
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(100),
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFFDD7CA9).withOpacity(0.3),
-                                  Colors.transparent,
-                                  const Color(0xFFDD7CA9).withOpacity(0.3),
-                                ],
-                                stops: const [0.0, 0.5, 1.0],
-                                begin: _getGradientAlignment(value),
-                                end: _getGradientAlignment(value + 0.5),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      ScreenChanger.slideUpTransition(
+                          const MusicGenerationScreen()),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Stack(
+                      children: [
+                        // Glowing border
+                        TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(seconds: 3),
+                          curve: Curves.linear,
+                          builder: (context, value, child) {
+                            return Container(
+                              height: 124, // 150 + 4px border
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(100),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFDD7CA9).withOpacity(0.3),
+                                    Colors.transparent,
+                                    const Color(0xFFDD7CA9).withOpacity(0.3),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                  begin: _getGradientAlignment(value),
+                                  end: _getGradientAlignment(value + 0.5),
+                                ),
                               ),
+                            );
+                          },
+                        ),
+                        // Main content
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF2C2C2C).withOpacity(0.8),
+                                const Color(0xFF1A1A1A).withOpacity(0.8),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                          );
-                        },
-                      ),
-                      // Main content
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF2C2C2C).withOpacity(0.8),
-                              const Color(0xFF1A1A1A).withOpacity(0.8),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            borderRadius: BorderRadius.circular(100),
                           ),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 150,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(15),
-                                  bottomLeft: Radius.circular(15),
-                                ),
-                                child: Center(
-                                  child: Lottie.asset(
-                                    'assets/lotties/music_gen_home.json',
-                                    fit: BoxFit.cover,
-                                    repeat: true,
-                                    height: 130,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 150,
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(15),
+                                    bottomLeft: Radius.circular(15),
                                   ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: ShaderMask(
-                                  shaderCallback: (bounds) =>
-                                      const LinearGradient(
-                                    colors: [Colors.white, Color(0xFFDD7CA9)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ).createShader(bounds),
-                                  child: Text(
-                                    "Generate a music\nin your mood",
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.2,
-                                      letterSpacing: 0.5,
-                                      color: Colors.white,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withOpacity(0.3),
-                                          blurRadius: 4,
-                                          offset: const Offset(2, 2),
-                                        )
-                                      ],
+                                  child: Center(
+                                    child: Lottie.asset(
+                                      'assets/lotties/music_gen_home.json',
+                                      fit: BoxFit.cover,
+                                      repeat: true,
+                                      height: 130,
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20),
+                                  child: ShaderMask(
+                                    shaderCallback: (bounds) =>
+                                        const LinearGradient(
+                                      colors: [Colors.white, Color(0xFFDD7CA9)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      "Generate a music\nin your mood",
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.2,
+                                        letterSpacing: 0.5,
+                                        color: Colors.white,
+                                        shadows: [
+                                          Shadow(
+                                            color:
+                                                Colors.black.withOpacity(0.3),
+                                            blurRadius: 4,
+                                            offset: const Offset(2, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const Padding(
@@ -432,46 +526,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Text(
                     "Top Calm Listenings",
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 30),
                   child: SizedBox(
-                    height: 200, // Set appropriate height for your BigBoxes
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/nature.jpg",
-                          title: "Nature",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/beauty.jpg",
-                          title: "Beauty",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/waterfall.jpg",
-                          title: "Waterfall",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/small_waterfall.jpg",
-                          title: "Calm",
-                        ),
-                        SuffleBox(),
-                        const SizedBox(width: 20),
-                      ],
-                    ),
+                    height: 200,
+                    child: _isLoading
+                        ? _buildSkeletonLoading() // Show skeleton loading
+                        : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/nature.jpg",
+                                title: "Nature",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/beauty.jpg",
+                                title: "Beauty",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/waterfall.jpg",
+                                title: "Waterfall",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/small_waterfall.jpg",
+                                title: "Calm",
+                              ),
+                              SuffleBox(),
+                              const SizedBox(width: 20),
+                            ],
+                          ),
                   ),
                 ),
                 const Padding(
@@ -479,46 +574,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Text(
                     "Best In Instrumental",
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 30),
                   child: SizedBox(
-                    height: 200, // Set appropriate height for your BigBoxes
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/drums.jpg",
-                          title: "Drums",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/flute.jpg",
-                          title: "Flute",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/guitar.jpg",
-                          title: "Guitar",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/piano.jpeg",
-                          title: "Piano",
-                        ),
-                        SuffleBox(),
-                        const SizedBox(width: 20),
-                      ],
-                    ),
+                    height: 200,
+                    child: _isLoading
+                        ? _buildSkeletonLoading() // Show skeleton loading
+                        : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/drums.jpg",
+                                title: "Drums",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/flute.jpg",
+                                title: "Flute",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/guitar.jpg",
+                                title: "Guitar",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/piano.jpeg",
+                                title: "Piano",
+                              ),
+                              SuffleBox(),
+                              const SizedBox(width: 20),
+                            ],
+                          ),
                   ),
                 ),
                 const Padding(
@@ -526,53 +622,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Text(
                     "Recommended to you 💗",
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 30),
                   child: SizedBox(
-                    height: 200, // Set appropriate height for your BigBoxes
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/classical.jpg",
-                          title: "Classical",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/disco.jpg",
-                          title: "Disco",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/pop.jpg",
-                          title: "Pop",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/jazz.png",
-                          title: "Jazz",
-                        ),
-                        const SizedBox(width: 20),
-                        BigBoxes(
-                          screenWidth: screenWidth,
-                          image: "assets/photos/rock.jpg",
-                          title: "Rock",
-                        ),
-                        const SizedBox(width: 20),
-                        SuffleBox(),
-                        const SizedBox(width: 20),
-                      ],
-                    ),
+                    height: 200,
+                    child: _isLoading
+                        ? _buildSkeletonLoading() // Show skeleton loading
+                        : ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/classical.jpg",
+                                title: "Classical",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/disco.jpg",
+                                title: "Disco",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/pop.jpg",
+                                title: "Pop",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/jazz.png",
+                                title: "Jazz",
+                              ),
+                              const SizedBox(width: 20),
+                              BigBoxes(
+                                screenWidth: screenWidth,
+                                image: "assets/photos/rock.jpg",
+                                title: "Rock",
+                              ),
+                              const SizedBox(width: 20),
+                              SuffleBox(),
+                              const SizedBox(width: 20),
+                            ],
+                          ),
                   ),
                 ),
               ],

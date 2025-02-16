@@ -1,9 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'dart:math';
 
 class MusicPlayerScreen extends StatefulWidget {
-  const MusicPlayerScreen({super.key});
+  const MusicPlayerScreen({Key? key}) : super(key: key);
 
   @override
   State<MusicPlayerScreen> createState() => _MusicPlayerScreenState();
@@ -11,200 +11,379 @@ class MusicPlayerScreen extends StatefulWidget {
 
 class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _waveController;
-  late Animation<double> _waveAnimation;
-  bool _isPlaying = false;
-  bool _isLoved = false;
   late AudioPlayer _audioPlayer;
+  bool _isPlaying = false;
+  bool _isLiked = false; // Track like state
+  double _currentPosition = 0;
+  double _totalDuration = 1;
+  final Duration _duration = const Duration(milliseconds: 440);
+
+  // Default Colors
+  var topLeft = const Color(0xFF2A2A2A); // Light Deep Charcoal
+  var topRight = const Color(0xFF3A3A3A); // Light Dark Slate Gray
+  var bottomRight = const Color(0xFF1C1C1C); // Light Rich Black
+  var bottomLeft = const Color(0xFF404040); // Light Warm Dark Gray
+
+  // "Love" Colors
+  var loveTopLeft = const Color(0xFFDD7CA9); // Light Pink
+  var loveTopRight = const Color(0xFFB33771); // Dark Pink
+  var loveBottomRight = const Color(0xFFDD7CA9); // Light Pink
+  var loveBottomLeft = const Color(0xFFB33771); // Dark Pink
+
+  var transparent = const Color(0x00000000); // Transparent
+
+  // Animation
+  late AnimationController _likeAnimationController;
+  late Animation<double> _likeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _waveController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
+    _audioPlayer = AudioPlayer();
+    _initAudio();
 
-    _waveAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    // Initialize animation controller for like button
+    _likeAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    // Define the tween for animating the colors
+    _likeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
-        parent: _waveController,
+        parent: _likeAnimationController,
         curve: Curves.easeInOut,
       ),
     );
-
-    _audioPlayer = AudioPlayer();
-    _initAudio();
   }
 
   Future<void> _initAudio() async {
     try {
-      await _audioPlayer.setAsset('assets/music/song.mp3'); // Load the music file
+      await _audioPlayer.setAsset('assets/music/song.mp3');
+      _audioPlayer.positionStream.listen((position) {
+        setState(() {
+          _currentPosition = position.inMilliseconds.toDouble();
+        });
+      });
+      _audioPlayer.durationStream.listen((duration) {
+        setState(() {
+          _totalDuration = duration?.inMilliseconds.toDouble() ?? 1;
+        });
+      });
     } catch (e) {
       print("Error loading audio: $e");
     }
   }
 
   void _togglePlayPause() async {
-    if (_isPlaying) {
-      await _audioPlayer.pause();
-    } else {
-      await _audioPlayer.play();
-    }
+    setState(() => _isPlaying = !_isPlaying);
+    _isPlaying ? await _audioPlayer.play() : await _audioPlayer.pause();
+  }
+
+  void _toggleLike() {
     setState(() {
-      _isPlaying = !_isPlaying;
-      if (_isPlaying) {
-        _waveController.repeat(reverse: true);
+      _isLiked = !_isLiked;
+      if (_isLiked) {
+        _likeAnimationController.forward();
       } else {
-        _waveController.stop();
+        _likeAnimationController.reverse();
       }
     });
   }
 
   @override
   void dispose() {
-    _waveController.dispose();
     _audioPlayer.dispose();
+    _likeAnimationController.dispose();
     super.dispose();
+  }
+
+  // Helper method to blend colors based on the animation value
+  Color _blendColor(Color color1, Color color2, double ratio) {
+    final double inverseRatio = 1 - ratio;
+    final int red = (color1.red * inverseRatio + color2.red * ratio).round();
+    final int green =
+        (color1.green * inverseRatio + color2.green * ratio).round();
+    final int blue = (color1.blue * inverseRatio + color2.blue * ratio).round();
+    return Color.fromRGBO(red, green, blue, 1);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Audio Visualization Waves
-          Expanded(
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _waveAnimation,
-                builder: (context, child) {
-                  return CustomPaint(
-                    painter: AudioWavePainter(
-                      animationValue: _waveAnimation.value,
-                      isPlaying: _isPlaying,
+          // Animated Background Gradients in a Stack
+          AnimatedBuilder(
+            animation: _likeAnimation,
+            builder: (context, child) {
+              // Blend colors based on like animation
+              final animatedTopLeftColor = _blendColor(
+                topLeft,
+                loveTopLeft,
+                _likeAnimation.value,
+              );
+              final animatedTopRightColor = _blendColor(
+                topRight,
+                loveTopRight,
+                _likeAnimation.value,
+              );
+              final animatedBottomRightColor = _blendColor(
+                bottomRight,
+                loveBottomRight,
+                _likeAnimation.value,
+              );
+              final animatedBottomLeftColor = _blendColor(
+                bottomLeft,
+                loveBottomLeft,
+                _likeAnimation.value,
+              );
+
+              return Stack(
+                children: [
+                  AnimatedContainer(
+                    duration: _duration,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [animatedTopLeftColor, transparent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
-                    size: Size(MediaQuery.of(context).size.width * 0.9, 200),
-                  );
-                },
-              ),
-            ),
+                  ),
+                  AnimatedContainer(
+                    duration: _duration,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [animatedTopRightColor, transparent],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                      ),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: _duration,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [animatedBottomRightColor, transparent],
+                        begin: Alignment.bottomRight,
+                        end: Alignment.topLeft,
+                      ),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: _duration,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [animatedBottomLeftColor, transparent],
+                        begin: Alignment.bottomLeft,
+                        end: Alignment.topRight,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
 
-          // Playback Controls
+          // Main Content
           Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
+            padding: const EdgeInsets.all(20),
+            child: ListView(
               children: [
-                // Progress Bar
-                StreamBuilder<Duration>(
-                  stream: _audioPlayer.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    final duration = _audioPlayer.duration ?? Duration.zero;
-                    return Column(
-                      children: [
-                        Slider(
-                          value: position.inMilliseconds.toDouble(),
-                          min: 0,
-                          max: duration.inMilliseconds.toDouble(),
-                          onChanged: (value) async {
-                            await _audioPlayer.seek(Duration(milliseconds: value.toInt()));
-                          },
-                          activeColor: const Color(0xFFDD7CA9),
-                          inactiveColor: Colors.white24,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _formatDuration(position),
-                                style: const TextStyle(color: Colors.white70),
+                // Keep the existing container
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: Stack(
+                    children: [
+                      // Glowing border
+                      TweenAnimationBuilder(
+                        tween: Tween<double>(begin: 0, end: 1),
+                        duration: const Duration(seconds: 3),
+                        curve: Curves.linear,
+                        builder: (context, value, child) {
+                          return Container(
+                            height: 404, // 150 + 4px border
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: LinearGradient(
+                                colors: _isLiked
+                                    ? [
+                                        const Color(0xFFDD7CA9)
+                                            .withOpacity(0.5),
+                                        const Color(0xFFDD7CA9)
+                                            .withOpacity(0.8),
+                                        const Color(0xFFDD7CA9)
+                                            .withOpacity(0.5),
+                                      ]
+                                    : [
+                                        const Color(0xFFDBD897)
+                                            .withOpacity(0.5),
+                                        const Color(0xFFDBD897)
+                                            .withOpacity(0.8),
+                                        const Color(0xFFDBD897)
+                                            .withOpacity(0.5),
+                                      ],
+                                stops: const [0.0, 0.5, 1.0],
+                                begin: _getGradientAlignment(value),
+                                end: _getGradientAlignment(value + 0.5),
                               ),
-                              Text(
-                                _formatDuration(duration),
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 30),
-
-                // Controls
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        _isLoved ? Icons.favorite : Icons.favorite_border,
-                        color: _isLoved ? Color(0xFFDD7CA9) : Colors.white70,
-                        size: 30,
+                            ),
+                          );
+                        },
                       ),
-                      onPressed: () => setState(() => _isLoved = !_isLoved),
-                    ),
-
-                    // Play/Pause Button
-                    GestureDetector(
-                      onTap: _togglePlayPause,
-                      child: Container(
+                      // Main content
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        height: 400,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFDD7CA9), Color(0xFF2C2C2C)],
+                          gradient: LinearGradient(
+                            colors: _isLiked
+                                ? [
+                                    const Color.fromARGB(255, 87, 55, 77)
+                                        .withOpacity(0.8),
+                                    const Color.fromARGB(255, 69, 46, 73)
+                                        .withOpacity(0.8),
+                                  ]
+                                : [
+                                    const Color(0xFF2C2C2C).withOpacity(0.8),
+                                    const Color(0xFF1A1A1A).withOpacity(0.8),
+                                  ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0xFFDD7CA9).withOpacity(0.4),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            )
-                          ],
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: _isPlaying
-                                ? const Icon(
-                                    Icons.pause_rounded,
-                                    size: 40,
-                                    color: Colors.white,
-                                  )
-                                : const Icon(
-                                    Icons.play_arrow_rounded,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
+                        child: Center(
+                          child: ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              colors: [
+                                Colors.white,
+                                _isLiked ? Colors.pink : const Color(0xFFDBD897)
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Text(
+                                "Generated music in your mood.",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                  letterSpacing: 0.5,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(2, 2),
+                                    ),
+                                  ],
+                                ),
+                                maxLines: 5,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
+                  ),
+                ),
 
-                    IconButton(
-                      icon: const Icon(Icons.autorenew_rounded,
-                          color: Colors.white70, size: 30),
-                      onPressed: () {
-                        // Handle recompose
-                      },
-                    ),
-                  ],
+                // Progress Bar
+                Padding(
+                  padding: const EdgeInsets.only(top: 30),
+                  child: Column(
+                    children: [
+                      SliderTheme(
+                        data: const SliderThemeData(
+                          trackHeight: 3,
+                          thumbShape:
+                              RoundSliderThumbShape(enabledThumbRadius: 8),
+                          activeTrackColor: Color(0xFFDD7CA9),
+                          inactiveTrackColor: Color(0xFFDBD897),
+                        ),
+                        child: Slider(
+                          value: _currentPosition.clamp(0, _totalDuration),
+                          min: 0,
+                          max: _totalDuration,
+                          onChanged: (value) async {
+                            await _audioPlayer
+                                .seek(Duration(milliseconds: value.toInt()));
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(_currentPosition),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                            Text(
+                              _formatDuration(_totalDuration),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Controls
+                Padding(
+                  padding: const EdgeInsets.only(top: 30),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _isLiked
+                              ? CupertinoIcons.heart_fill
+                              : CupertinoIcons.heart,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: _toggleLike,
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _isPlaying
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_filled,
+                          color: Colors.white,
+                          size: 90,
+                        ),
+                        onPressed: _togglePlayPause,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.refresh,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: () {
+                          _audioPlayer.seek(Duration.zero);
+                          if (!_isPlaying) _togglePlayPause();
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -214,54 +393,18 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     );
   }
 
-  String _formatDuration(Duration duration) {
+  String _formatDuration(double milliseconds) {
+    final duration = Duration(milliseconds: milliseconds.round());
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
-}
 
-class AudioWavePainter extends CustomPainter {
-  final double animationValue;
-  final bool isPlaying;
-
-  AudioWavePainter({required this.animationValue, required this.isPlaying});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFFDD7CA9), Color(0xFF2C2C2C)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTRB(0, 0, size.width, size.height))
-      ..style = PaintingStyle.fill;
-
-    final waveCount = 20;
-    final waveWidth = size.width / waveCount;
-    final random = Random();
-
-    for (var i = 0; i < waveCount; i++) {
-      final heightVariation = isPlaying
-          ? (sin(animationValue * 2 * pi + i * 0.5) * 0.5 + 0.5
-          ): 0.5;
-      final waveHeight = size.height * 0.4 * heightVariation +
-          random.nextDouble() * size.height * 0.1;
-
-      final rect = Rect.fromLTRB(
-        i * waveWidth + 4,
-        (size.height - waveHeight) / 2,
-        (i + 1) * waveWidth - 4,
-        (size.height + waveHeight) / 2,
-      );
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-        paint,
-      );
-    }
+  Alignment _getGradientAlignment(double value) {
+    final angle = value * 4; // 0-4 for full rotation
+    if (angle < 1) return Alignment(-1 + 2 * angle, -1); // Left to Top
+    if (angle < 2) return Alignment(1, -1 + 2 * (angle - 1)); // Top to Right
+    if (angle < 3) return Alignment(1 - 2 * (angle - 2), 1); // Right to Bottom
+    return Alignment(-1, 1 - 2 * (angle - 3)); // Bottom to Left
   }
-
-  @override
-  bool shouldRepaint(covariant AudioWavePainter oldDelegate) => true;
 }

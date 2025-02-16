@@ -40,6 +40,8 @@ dependencies:
   lottie: ^3.2.0
   shimmer: ^3.0.0
   just_audio: ^0.9.46
+  music_visualizer: ^1.0.4
+  audioplayers: ^6.1.2
 
 dev_dependencies:
   flutter_test:

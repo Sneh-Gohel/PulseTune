@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:plusetune/Screens/SplashScreen.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // 🔥 Ensure Firebase is initialized
+
   runApp(const MyApp());
 }
 

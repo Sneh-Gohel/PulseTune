@@ -17,6 +17,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   double _currentPosition = 0;
   double _totalDuration = 1;
   final Duration _duration = const Duration(milliseconds: 440);
+  bool _loadingScreen = false; // Add loading state
 
   // Default Colors
   var topLeft = const Color(0xFF2A2A2A); // Light Deep Charcoal
@@ -195,199 +196,288 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
             },
           ),
 
-          // Main Content
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: ListView(
-              children: [
-                // Keep the existing container
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Stack(
-                    children: [
-                      // Glowing border
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(seconds: 3),
-                        curve: Curves.linear,
-                        builder: (context, value, child) {
-                          return Container(
-                            height: 404, // 150 + 4px border
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              gradient: LinearGradient(
-                                colors: _isLiked
-                                    ? [
-                                        const Color(0xFFDD7CA9)
-                                            .withOpacity(0.5),
-                                        const Color(0xFFDD7CA9)
-                                            .withOpacity(0.8),
-                                        const Color(0xFFDD7CA9)
-                                            .withOpacity(0.5),
-                                      ]
-                                    : [
-                                        const Color(0xFFDBD897)
-                                            .withOpacity(0.5),
-                                        const Color(0xFFDBD897)
-                                            .withOpacity(0.8),
-                                        const Color(0xFFDBD897)
-                                            .withOpacity(0.5),
-                                      ],
-                                stops: const [0.0, 0.5, 1.0],
-                                begin: _getGradientAlignment(value),
-                                end: _getGradientAlignment(value + 0.5),
-                              ),
-                            ),
-                          );
-                        },
+          // Skeleton Loading Screen
+          if (_loadingScreen)
+            Container(
+              color: const Color(0xFF1A1A1A).withOpacity(0.8),
+              child: Column(
+                children: [
+                  // Skeleton for the main container
+                  Padding(
+                    padding: const EdgeInsets.only(top: 100),
+                    child: Container(
+                      height: 400,
+                      width: MediaQuery.of(context).size.width - 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C2C2C),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      // Main content
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        height: 400,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: _isLiked
-                                ? [
-                                    const Color.fromARGB(255, 87, 55, 77)
-                                        .withOpacity(0.8),
-                                    const Color.fromARGB(255, 69, 46, 73)
-                                        .withOpacity(0.8),
-                                  ]
-                                : [
-                                    const Color(0xFF2C2C2C).withOpacity(0.8),
-                                    const Color(0xFF1A1A1A).withOpacity(0.8),
-                                  ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [
-                                Colors.white,
-                                _isLiked ? Colors.pink : const Color(0xFFDBD897)
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Text(
-                                "Generated music in your mood.",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.2,
-                                  letterSpacing: 0.5,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 4,
-                                      offset: const Offset(2, 2),
-                                    ),
-                                  ],
-                                ),
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
 
-                // Progress Bar
-                Padding(
-                  padding: const EdgeInsets.only(top: 30),
-                  child: Column(
-                    children: [
-                      SliderTheme(
-                        data: const SliderThemeData(
-                          trackHeight: 3,
-                          thumbShape:
-                              RoundSliderThumbShape(enabledThumbRadius: 8),
-                          activeTrackColor: Color(0xFFDD7CA9),
-                          inactiveTrackColor: Color(0xFFDBD897),
+                  // Skeleton for the progress bar
+                  Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 3,
+                          width: MediaQuery.of(context).size.width - 40,
+                          color: const Color(0xFF2C2C2C),
                         ),
-                        child: Slider(
-                          value: _currentPosition.clamp(0, _totalDuration),
-                          min: 0,
-                          max: _totalDuration,
-                          onChanged: (value) async {
-                            await _audioPlayer
-                                .seek(Duration(milliseconds: value.toInt()));
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
+                        const SizedBox(height: 10),
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _formatDuration(_currentPosition),
-                              style: const TextStyle(color: Colors.white70),
+                            Container(
+                              width: 50,
+                              height: 10,
+                              color: const Color(0xFF2C2C2C),
                             ),
-                            Text(
-                              _formatDuration(_totalDuration),
-                              style: const TextStyle(color: Colors.white70),
+                            Container(
+                              width: 50,
+                              height: 10,
+                              color: const Color(0xFF2C2C2C),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
-                // Controls
-                Padding(
-                  padding: const EdgeInsets.only(top: 30),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _isLiked
-                              ? CupertinoIcons.heart_fill
-                              : CupertinoIcons.heart,
-                          color: Colors.white,
-                          size: 30,
+                  // Skeleton for the controls
+                  Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2C),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
-                        onPressed: _toggleLike,
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          _isPlaying
-                              ? Icons.pause_circle_filled
-                              : Icons.play_circle_filled,
-                          color: Colors.white,
-                          size: 90,
+                        Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2C),
+                            borderRadius: BorderRadius.circular(45),
+                          ),
                         ),
-                        onPressed: _togglePlayPause,
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.refresh,
-                          color: Colors.white,
-                          size: 30,
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2C),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
-                        onPressed: () {
-                          _audioPlayer.seek(Duration.zero);
-                          if (!_isPlaying) _togglePlayPause();
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+
+          // Main Content (Visible when loadingScreen is false)
+          if (!_loadingScreen)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: ListView(
+                children: [
+                  // Keep the existing container
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Stack(
+                      children: [
+                        // Glowing border
+                        TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(seconds: 3),
+                          curve: Curves.linear,
+                          builder: (context, value, child) {
+                            return Container(
+                              height: 404, // 150 + 4px border
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                gradient: LinearGradient(
+                                  colors: _isLiked
+                                      ? [
+                                          const Color(0xFFDD7CA9)
+                                              .withOpacity(0.5),
+                                          const Color(0xFFDD7CA9)
+                                              .withOpacity(0.8),
+                                          const Color(0xFFDD7CA9)
+                                              .withOpacity(0.5),
+                                        ]
+                                      : [
+                                          const Color(0xFFDBD897)
+                                              .withOpacity(0.5),
+                                          const Color(0xFFDBD897)
+                                              .withOpacity(0.8),
+                                          const Color(0xFFDBD897)
+                                              .withOpacity(0.5),
+                                        ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                  begin: _getGradientAlignment(value),
+                                  end: _getGradientAlignment(value + 0.5),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Main content
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          height: 400,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: _isLiked
+                                  ? [
+                                      const Color.fromARGB(255, 87, 55, 77)
+                                          .withOpacity(0.8),
+                                      const Color.fromARGB(255, 69, 46, 73)
+                                          .withOpacity(0.8),
+                                    ]
+                                  : [
+                                      const Color(0xFF2C2C2C).withOpacity(0.8),
+                                      const Color(0xFF1A1A1A).withOpacity(0.8),
+                                    ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [
+                                  Colors.white,
+                                  _isLiked
+                                      ? Colors.pink
+                                      : const Color(0xFFDBD897)
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ).createShader(bounds),
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Text(
+                                  "Generated music in your mood.",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.2,
+                                    letterSpacing: 0.5,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 4,
+                                        offset: const Offset(2, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  maxLines: 5,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Progress Bar
+                  Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: Column(
+                      children: [
+                        SliderTheme(
+                          data: const SliderThemeData(
+                            trackHeight: 3,
+                            thumbShape:
+                                RoundSliderThumbShape(enabledThumbRadius: 8),
+                            activeTrackColor: Color(0xFFDD7CA9),
+                            inactiveTrackColor: Color(0xFFDBD897),
+                          ),
+                          child: Slider(
+                            value: _currentPosition.clamp(0, _totalDuration),
+                            min: 0,
+                            max: _totalDuration,
+                            onChanged: (value) async {
+                              await _audioPlayer.seek(
+                                  Duration(milliseconds: value.toInt()));
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDuration(_currentPosition),
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              Text(
+                                _formatDuration(_totalDuration),
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Controls
+                  Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _isLiked
+                                ? CupertinoIcons.heart_fill
+                                : CupertinoIcons.heart,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          onPressed: _toggleLike,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            color: Colors.white,
+                            size: 90,
+                          ),
+                          onPressed: _togglePlayPause,
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.refresh,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          onPressed: () {
+                            _audioPlayer.seek(Duration.zero);
+                            if (!_isPlaying) _togglePlayPause();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

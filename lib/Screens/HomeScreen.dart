@@ -1,5 +1,6 @@
-import 'dart:async';
+// ignore_for_file: file_names
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:plusetune/Components/BigBoxes.dart';
@@ -7,7 +8,7 @@ import 'package:plusetune/Components/RowTiles.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Components/SuffleBox.dart';
 import 'package:plusetune/Screens/MusicGenerationScreen.dart';
-import 'package:shimmer/shimmer.dart'; // Add shimmer package
+import 'package:shimmer/shimmer.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

@@ -7,8 +7,10 @@ import 'package:plusetune/Components/BigBoxes.dart';
 import 'package:plusetune/Components/RowTiles.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Components/SuffleBox.dart';
+import 'package:plusetune/Screens/HeartBeatAnalizingScreen.dart';
+import 'package:plusetune/Screens/InfinityPlayerScreen.dart';
 import 'package:plusetune/Screens/MusicGenerationScreen.dart';
-import 'package:shimmer/shimmer.dart'; 
+import 'package:shimmer/shimmer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -267,110 +269,124 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Stack(
-                    children: [
-                      // Glowing border
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(seconds: 3),
-                        curve: Curves.linear,
-                        builder: (context, value, child) {
-                          return Container(
-                            height: 124, // 150 + 4px border
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      ScreenChanger.slideUpTransition(
+                        InfinityPlayerScreen(isHeartbeatMusic: true,url: "",message: "",),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Stack(
+                      children: [
+                        // Glowing border
+                        TweenAnimationBuilder(
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(seconds: 3),
+                          curve: Curves.linear,
+                          builder: (context, value, child) {
+                            return Container(
+                              height: 124, // 150 + 4px border
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(100),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color.fromARGB(255, 226, 104, 104)
+                                        .withOpacity(0.3),
+                                    Colors.transparent,
+                                    const Color.fromARGB(255, 226, 104, 104)
+                                        .withOpacity(0.3),
+                                  ],
+                                  stops: const [0.0, 0.5, 1.0],
+                                  begin: _getGradientAlignment(value),
+                                  end: _getGradientAlignment(value + 0.5),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Main content
+                        Hero(
+                          tag: "_heartbeat",
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            height: 120,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(100),
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color.fromARGB(255, 226, 104, 104)
-                                      .withOpacity(0.3),
-                                  Colors.transparent,
-                                  const Color.fromARGB(255, 226, 104, 104)
-                                      .withOpacity(0.3),
+                                  const Color(0xFF2C2C2C).withOpacity(0.8),
+                                  const Color(0xFF1A1A1A).withOpacity(0.8),
                                 ],
-                                stops: const [0.0, 0.5, 1.0],
-                                begin: _getGradientAlignment(value),
-                                end: _getGradientAlignment(value + 0.5),
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
+                              borderRadius: BorderRadius.circular(100),
                             ),
-                          );
-                        },
-                      ),
-                      // Main content
-                      Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF2C2C2C).withOpacity(0.8),
-                              const Color(0xFF1A1A1A).withOpacity(0.8),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 150,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(15),
-                                  bottomLeft: Radius.circular(15),
-                                ),
-                                child: Center(
-                                  child: Lottie.asset(
-                                    'assets/lotties/heart_beat.json',
-                                    fit: BoxFit.cover,
-                                    repeat: true,
-                                    controller: _lottieController,
-                                    height: 80,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: ShaderMask(
-                                  shaderCallback: (bounds) =>
-                                      const LinearGradient(
-                                    colors: [
-                                      Colors.white,
-                                      Color.fromARGB(255, 226, 104, 104)
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ).createShader(bounds),
-                                  child: Text(
-                                    "Sync your music\nto your heartbeat",
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.2,
-                                      letterSpacing: 0.5,
-                                      color: Colors.white,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withOpacity(0.3),
-                                          blurRadius: 4,
-                                          offset: const Offset(2, 2),
-                                        )
-                                      ],
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 150,
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(15),
+                                      bottomLeft: Radius.circular(15),
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                    child: Center(
+                                      child: Lottie.asset(
+                                        'assets/lotties/heart_beat.json',
+                                        fit: BoxFit.cover,
+                                        repeat: true,
+                                        controller: _lottieController,
+                                        height: 80,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20),
+                                    child: ShaderMask(
+                                      shaderCallback: (bounds) =>
+                                          const LinearGradient(
+                                        colors: [
+                                          Colors.white,
+                                          Color.fromARGB(255, 226, 104, 104)
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(bounds),
+                                      child: Text(
+                                        "Sync your music\nto your heartbeat",
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.2,
+                                          letterSpacing: 0.5,
+                                          color: Colors.white,
+                                          shadows: [
+                                            Shadow(
+                                              color:
+                                                  Colors.black.withOpacity(0.3),
+                                              blurRadius: 4,
+                                              offset: const Offset(2, 2),
+                                            )
+                                          ],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
                 const Padding(
@@ -417,7 +433,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.of(context).push(
                       ScreenChanger.slideUpTransition(
-                          const MusicGenerationScreen()),
+                        const MusicGenerationScreen(),
+                      ),
                     );
                   },
                   child: Padding(

@@ -373,18 +373,19 @@ class _LoginScreenState extends State<LoginScreen>
                             },
                             child: const Text.rich(
                               TextSpan(
-                                  text: "Don't have an account? ",
-                                  style: TextStyle(color: Colors.white),
-                                  children: [
-                                    TextSpan(
-                                      text: 'Sign Up',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    )
-                                  ]),
+                                text: "Don't have an account? ",
+                                style: TextStyle(color: Colors.white),
+                                children: [
+                                  TextSpan(
+                                    text: 'Sign Up',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  )
+                                ],
+                              ),
                             ),
                           ),
                         ),

@@ -1,8 +1,14 @@
 // splash_screen.dart
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
+import 'package:plusetune/Screens/HomeScreen.dart';
 import 'LoginScreen.dart'; // Import your LoginScreen
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -43,11 +49,53 @@ class _SplashScreen extends State<SplashScreen>
     ).animate(_controller);
 
     _controller.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1000), () {
+      Future.delayed(const Duration(milliseconds: 1000), () async {
         // Use the reusable transition
-        Navigator.of(context).pushReplacement(
-          ScreenChanger.slideUpTransition(const LoginScreen()),
-        );
+
+        final directory = await getApplicationDocumentsDirectory();
+        final file = File('${directory.path}/user_id.txt');
+        bool fileExists = file.existsSync();
+
+        if (fileExists) {
+          String fileContent = await file.readAsString();
+          List<String> splitStrings = fileContent.split(" ");
+          String email = splitStrings[0];
+          String password = splitStrings[1];
+
+          try {
+            final UserCredential userCredential =
+                await FirebaseAuth.instance.signInWithEmailAndPassword(
+              email: email.trim(),
+              password: password.trim(),
+            );
+
+            if (userCredential.user != null) {
+              // Navigate to HomeScreen and clear the navigation stack
+
+              Navigator.of(context).pushAndRemoveUntil(
+                ScreenChanger.slideUpTransition(const HomeScreen()),
+                (route) => false,
+              );
+            } else {
+              print("Getting errors to fetch the details");
+              Navigator.of(context).pushReplacement(
+                ScreenChanger.slideUpTransition(const LoginScreen()),
+              );
+            }
+          } catch (e) {
+            print("Incorrect credentials");
+            if (e.toString().contains("auth credential is incorrect")) {
+              Navigator.of(context).pushReplacement(
+                ScreenChanger.slideUpTransition(const LoginScreen()),
+              );
+            }
+          }
+        } else {
+          print("File doesn't exists");
+          Navigator.of(context).pushReplacement(
+            ScreenChanger.slideUpTransition(const LoginScreen()),
+          );
+        }
       });
     });
   }

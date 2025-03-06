@@ -88,6 +88,7 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
 
     if (widget._isHeartbeatMusic) {
       _likeAnimationController.forward();
+      _generateAndPlayAudio();
     } else {
       // Generate audio only if _isHeartbeatMusic is false
       _generateAndPlayAudio();
@@ -116,7 +117,7 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
           });
 
           // Check if 5 seconds are remaining in the major audio and crossfading is not in progress
-          if (_totalDuration - _currentPosition <= 500 &&
+          if (_totalDuration - _currentPosition <= 5000 &&
               _secondaryAudioFile != null &&
               !_isCrossfading) {
             _startCrossfade();
@@ -156,7 +157,11 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
         _audioPlayer.setVolume(_majorVolume);
 
         // Fetch the next secondary audio
-        await _fetchSecondaryAudio();
+        if (widget._isHeartbeatMusic) {
+          await _fetchHeartbeatAudio();
+        } else {
+          await _fetchSecondaryAudio();
+        }
       } catch (e) {
         print("Error playing secondary audio: $e");
       }
@@ -235,7 +240,11 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
       _secondaryAudioFile = null;
 
       // Fetch the next secondary audio
-      await _fetchSecondaryAudio();
+      if (widget._isHeartbeatMusic) {
+        await _fetchHeartbeatAudio();
+      } else {
+        await _fetchSecondaryAudio();
+      }
     }
   }
 
@@ -249,6 +258,8 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
   }
 
   Future<File?> _generateAudioFile() async {
+    if (!mounted) return null; // Check if the widget is mounted
+
     String serverIP = "";
 
     try {
@@ -274,7 +285,8 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
       return null;
     }
 
-    final Uri url = Uri.parse('http://$serverIP:5000/run-script');
+    final Uri url =
+        Uri.parse('http://$serverIP:5000/run-script'); // Use HTTPS if possible
     print('Sending request to: $url');
 
     final Map<String, dynamic> requestData = {
@@ -320,36 +332,147 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
 
   Future<void> _generateAndPlayAudio() async {
     if (widget._isHeartbeatMusic) {
-      print("Hello"); // Print "Hello" if _isHeartbeatMusic is true
-      return;
-    }
-
-    setState(() {
-      _isGenerating = true;
-    });
-
-    // Fetch the major audio
-    _majorAudioFile = await _generateAudioFile();
-    if (_majorAudioFile != null) {
-      print("Got the first audio: ${_majorAudioFile!.path}");
-      await _audioPlayer.setFilePath(_majorAudioFile!.path);
-      _audioPlayer.play();
-
-      // Update state to indicate that the audio is playing
       setState(() {
-        _isPlaying = true;
-        _loadingScreen = false;
-        _isGenerating = false;
-        print("screens are sets to off");
+        _isGenerating = true;
       });
 
-      // Fetch the secondary audio
-      await _fetchSecondaryAudio();
+      // Fetch the major audio using "heart_rate" API
+      _majorAudioFile = await _generateHeartbeatAudio();
+      if (_majorAudioFile != null) {
+        print("Got the first heartbeat audio: ${_majorAudioFile!.path}");
+        await _audioPlayer.setFilePath(_majorAudioFile!.path);
+        _audioPlayer.play();
+
+        // Update state to indicate that the audio is playing
+        if (mounted) {
+          setState(() {
+            _isPlaying = true;
+            _loadingScreen = false;
+            _isGenerating = false;
+            print("screens are sets to off");
+          });
+        }
+
+        // Fetch the secondary audio
+        await _fetchHeartbeatAudio();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      }
+    } else {
+      // Existing logic for non-heartbeat music
+      setState(() {
+        _isGenerating = true;
+      });
+
+      // Fetch the major audio
+      _majorAudioFile = await _generateAudioFile();
+      if (_majorAudioFile != null) {
+        print("Got the first audio: ${_majorAudioFile!.path}");
+        await _audioPlayer.setFilePath(_majorAudioFile!.path);
+        _audioPlayer.play();
+
+        // Update state to indicate that the audio is playing
+        if (mounted) {
+          setState(() {
+            _isPlaying = true;
+            _loadingScreen = false;
+            _isGenerating = false;
+            print("screens are sets to off");
+          });
+        }
+
+        // Fetch the secondary audio
+        await _fetchSecondaryAudio();
+      }
+
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      }
+    }
+  }
+
+  Future<File?> _generateHeartbeatAudio() async {
+    String serverIP = "";
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Fetch the document from the "Server" collection with ID "Current_ip"
+      final docSnapshot =
+          await firestore.collection('Server').doc('Current_ip').get();
+
+      if (docSnapshot.exists) {
+        // Extract the IP address from the document
+        final ipAddress = docSnapshot.data()?['ip'] ?? "No IP found";
+        setState(() {
+          serverIP = ipAddress;
+        });
+        print('Fetched server IP: $serverIP');
+      } else {
+        print('Error: Firestore document "Current_ip" does not exist.');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching server IP from Firestore: $e');
+      return null;
     }
 
-    setState(() {
-      _isGenerating = false;
-    });
+    final Uri url = Uri.parse('http://$serverIP:5000/run-script');
+    print('Sending request to: $url');
+
+    final Map<String, dynamic> requestData = {
+      "api": "heart_rate",
+      "name": "user_heartbeat_music",
+      "url": "https://app.hyperate.io/D8EF"
+    };
+
+    try {
+      final http.Response response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(requestData),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+
+        // Save the audio file locally
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/${requestData["name"]}.mp3');
+        await file.writeAsBytes(bytes);
+
+        print('Audio saved to: ${file.path}');
+        return file;
+      } else {
+        print('Failed to generate audio. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+    } on TimeoutException catch (e) {
+      print('Request timed out: $e');
+    } catch (e) {
+      print('Error: $e');
+    }
+    return null;
+  }
+
+  Future<void> _fetchHeartbeatAudio() async {
+    final file = await _generateHeartbeatAudio();
+    if (file != null) {
+      setState(() {
+        _secondaryAudioFile = file;
+      });
+    }
   }
 
   void _togglePlayPause() async {
@@ -369,7 +492,12 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
     });
 
     // Regenerate the major audio
-    _majorAudioFile = await _generateAudioFile();
+    if (widget._isHeartbeatMusic) {
+      _majorAudioFile = await _generateHeartbeatAudio();
+    } else {
+      _majorAudioFile = await _generateAudioFile();
+    }
+
     if (_majorAudioFile != null) {
       print("Regenerated the major audio: ${_majorAudioFile!.path}");
       await _audioPlayer.setFilePath(_majorAudioFile!.path);
@@ -382,7 +510,11 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
       });
 
       // Fetch the secondary audio
-      await _fetchSecondaryAudio();
+      if (widget._isHeartbeatMusic) {
+        await _fetchHeartbeatAudio();
+      } else {
+        await _fetchSecondaryAudio();
+      }
     }
 
     setState(() {
@@ -634,22 +766,13 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
                               child: Padding(
                                 padding: const EdgeInsets.all(20),
                                 child: widget._isHeartbeatMusic
-                                    ? Column(
-                                        children: [
-                                          Lottie.asset(
-                                            'assets/lotties/heart.json',
-                                            fit: BoxFit.cover,
-                                            repeat: true,
-                                            height: 250,
-                                          ),
-                                          const Text(
-                                            "100",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 50,
-                                            ),
-                                          ),
-                                        ],
+                                    ? Center(
+                                        child: Lottie.asset(
+                                          'assets/lotties/heart.json',
+                                          fit: BoxFit.cover,
+                                          repeat: true,
+                                          height: 250,
+                                        ),
                                       )
                                     : Hero(
                                         tag: widget.message,

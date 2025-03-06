@@ -1,8 +1,16 @@
-// ignore_for_file: must_be_immutable, file_names
+// ignore_for_file: must_be_immutable, file_names, avoid_print
 
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:lottie/lottie.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 
 class InfinityPlayerScreen extends StatefulWidget {
   bool _isHeartbeatMusic = false;
@@ -26,7 +34,18 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
   double _currentPosition = 0;
   double _totalDuration = 1;
   final Duration _duration = const Duration(milliseconds: 440);
-  bool _loadingScreen = false; // Add loading state
+  bool _loadingScreen = true; // Show loading screen initially
+  bool _isGenerating = false; // Track if audio is being generated
+
+  // Audio files
+  File? _majorAudioFile;
+  File? _secondaryAudioFile;
+
+  double _majorVolume =
+      1.0; // Volume for the major audio (starts at full volume)
+  double _secondaryVolume =
+      0.0; // Volume for the secondary audio (starts at zero volume)
+  bool _isCrossfading = false; // Add this flag
 
   // Default Colors
   var topLeft = const Color(0xFF2A2A2A); // Light Deep Charcoal
@@ -50,7 +69,6 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
-    _initAudio();
 
     // Initialize animation controller for like button
     _likeAnimationController = AnimationController(
@@ -65,30 +83,311 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
         curve: Curves.easeInOut,
       ),
     );
-    if (widget._isHeartbeatMusic) _likeAnimationController.forward();
+
+    _initAudio();
+
+    if (widget._isHeartbeatMusic) {
+      _likeAnimationController.forward();
+    } else {
+      // Generate audio only if _isHeartbeatMusic is false
+      _generateAndPlayAudio();
+    }
   }
 
   Future<void> _initAudio() async {
     try {
-      await _audioPlayer.setAsset('assets/music/song.mp3');
+      if (widget._isHeartbeatMusic) {
+        // Load predefined audio for heartbeat music
+        await _audioPlayer.setAsset('assets/music/song.mp3');
+        setState(() {
+          _loadingScreen = false;
+          _isPlaying = true;
+        });
+      } else {
+        // Load generated audio
+        // await _generateAndPlayAudio();  // Moved this call to initState
+      }
+
+      // Listen to position updates
       _audioPlayer.positionStream.listen((position) {
-        setState(() {
-          _currentPosition = position.inMilliseconds.toDouble();
-        });
+        if (mounted) {
+          setState(() {
+            _currentPosition = position.inMilliseconds.toDouble();
+          });
+
+          // Check if 5 seconds are remaining in the major audio and crossfading is not in progress
+          if (_totalDuration - _currentPosition <= 500 &&
+              _secondaryAudioFile != null &&
+              !_isCrossfading) {
+            _startCrossfade();
+          }
+        }
       });
+
+      // Listen to duration updates
       _audioPlayer.durationStream.listen((duration) {
-        setState(() {
-          _totalDuration = duration?.inMilliseconds.toDouble() ?? 1;
-        });
+        if (mounted) {
+          setState(() {
+            _totalDuration = duration?.inMilliseconds.toDouble() ?? 1;
+          });
+        }
       });
     } catch (e) {
       print("Error loading audio: $e");
     }
   }
 
+  Future<void> _playSecondaryAudio() async {
+    if (_secondaryAudioFile != null) {
+      try {
+        // Load and play the secondary audio
+        await _audioPlayer.setFilePath(_secondaryAudioFile!.path);
+        await _audioPlayer.play();
+
+        // Update state after successful play
+        setState(() {
+          _majorAudioFile = _secondaryAudioFile;
+          _secondaryAudioFile = null;
+          _majorVolume = 1.0;
+          _secondaryVolume = 0.0;
+          _isCrossfading = false; // Crossfading is complete
+        });
+
+        _audioPlayer.setVolume(_majorVolume);
+
+        // Fetch the next secondary audio
+        await _fetchSecondaryAudio();
+      } catch (e) {
+        print("Error playing secondary audio: $e");
+      }
+    }
+  }
+
+  void _startCrossfade() async {
+    if (_isCrossfading) return; // Prevent multiple calls
+    _isCrossfading = true; // Set the flag
+
+    const int steps = 40;
+    const Duration stepDuration = Duration(milliseconds: 50);
+
+    // Start playing secondary audio with zero volume during crossfade
+    if (_secondaryAudioFile != null) {
+      await _audioPlayer.pause(); // Pause the current audio
+      await _audioPlayer.setFilePath(_secondaryAudioFile!.path);
+      await _audioPlayer.play();
+      _audioPlayer.setVolume(0.0); // Initially, set the volume to 0
+    }
+
+    for (int i = 0; i < steps; i++) {
+      await Future.delayed(stepDuration);
+      if (mounted) {
+        setState(() {
+          _majorVolume = 1.0 - (i / steps);
+          _secondaryVolume = i / steps;
+        });
+        _audioPlayer.setVolume(
+            _secondaryVolume); // Gradually increase the volume of the secondary audio
+      }
+    }
+
+    // After crossfade, switch to the secondary audio
+    await _playSecondaryAudio();
+  }
+
+  String generate6CharCode() {
+    const String lowercaseLetters = 'abcdefghijklmnopqrstuvwxyz';
+    const String uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const String numbers = '0123456789';
+
+    // Combine all possible characters for the first 5 characters
+    const String allChars = lowercaseLetters + uppercaseLetters + numbers;
+
+    // Combine only alphabets for the last character
+    const String alphabets = lowercaseLetters + uppercaseLetters;
+
+    // Create a Random object
+    final Random random = Random();
+
+    // Generate the first 5 characters
+    String code = '';
+    for (int i = 0; i < 5; i++) {
+      // Pick a random index from the combined characters
+      int randomIndex = random.nextInt(allChars.length);
+      // Append the character at the random index to the code
+      code += allChars[randomIndex];
+    }
+
+    // Generate the last character (must be an alphabet)
+    int randomIndex = random.nextInt(alphabets.length);
+    code += alphabets[randomIndex];
+    print(code);
+
+    return code;
+  }
+
+  Future<void> _switchToSecondaryAudio() async {
+    if (_secondaryAudioFile != null) {
+      await _audioPlayer.setFilePath(_secondaryAudioFile!.path);
+      _audioPlayer.play();
+
+      // Set the secondary audio as the major audio
+      _majorAudioFile = _secondaryAudioFile;
+      _secondaryAudioFile = null;
+
+      // Fetch the next secondary audio
+      await _fetchSecondaryAudio();
+    }
+  }
+
+  Future<void> _fetchSecondaryAudio() async {
+    final file = await _generateAudioFile();
+    if (file != null) {
+      setState(() {
+        _secondaryAudioFile = file;
+      });
+    }
+  }
+
+  Future<File?> _generateAudioFile() async {
+    String serverIP = "";
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Fetch the document from the "Server" collection with ID "Current_ip"
+      final docSnapshot =
+          await firestore.collection('Server').doc('Current_ip').get();
+
+      if (docSnapshot.exists) {
+        // Extract the IP address from the document
+        final ipAddress = docSnapshot.data()?['ip'] ?? "No IP found";
+        setState(() {
+          serverIP = ipAddress;
+        });
+        print('Fetched server IP: $serverIP');
+      } else {
+        print('Error: Firestore document "Current_ip" does not exist.');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching server IP from Firestore: $e');
+      return null;
+    }
+
+    final Uri url = Uri.parse('http://$serverIP:5000/run-script');
+    print('Sending request to: $url');
+
+    final Map<String, dynamic> requestData = {
+      "api": "prompt_gen", // Replace with your API key
+      "prompt": widget.message, // Use the message as the prompt
+      "duration": 60, // Set the duration (in seconds)
+      "name": generate6CharCode(), // Set the name of the file
+    };
+
+    try {
+      final http.Response response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(requestData),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+
+        // Save the audio file locally
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/${requestData["name"]}.mp3');
+        await file.writeAsBytes(bytes);
+
+        print('Audio saved to: ${file.path}');
+        return file;
+      } else {
+        print('Failed to generate audio. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+    } on TimeoutException catch (e) {
+      print('Request timed out: $e');
+    } catch (e) {
+      print('Error: $e');
+    }
+    return null;
+  }
+
+  Future<void> _generateAndPlayAudio() async {
+    if (widget._isHeartbeatMusic) {
+      print("Hello"); // Print "Hello" if _isHeartbeatMusic is true
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+    });
+
+    // Fetch the major audio
+    _majorAudioFile = await _generateAudioFile();
+    if (_majorAudioFile != null) {
+      print("Got the first audio: ${_majorAudioFile!.path}");
+      await _audioPlayer.setFilePath(_majorAudioFile!.path);
+      _audioPlayer.play();
+
+      // Update state to indicate that the audio is playing
+      setState(() {
+        _isPlaying = true;
+        _loadingScreen = false;
+        _isGenerating = false;
+        print("screens are sets to off");
+      });
+
+      // Fetch the secondary audio
+      await _fetchSecondaryAudio();
+    }
+
+    setState(() {
+      _isGenerating = false;
+    });
+  }
+
   void _togglePlayPause() async {
-    setState(() => _isPlaying = !_isPlaying);
-    _isPlaying ? await _audioPlayer.play() : await _audioPlayer.pause();
+    if (mounted) {
+      setState(() => _isPlaying = !_isPlaying);
+      if (_isPlaying) {
+        _audioPlayer.play();
+      } else {
+        await _audioPlayer.pause();
+      }
+    }
+  }
+
+  void _regenerateMusic() async {
+    setState(() {
+      _isGenerating = true;
+    });
+
+    // Regenerate the major audio
+    _majorAudioFile = await _generateAudioFile();
+    if (_majorAudioFile != null) {
+      print("Regenerated the major audio: ${_majorAudioFile!.path}");
+      await _audioPlayer.setFilePath(_majorAudioFile!.path);
+      _audioPlayer.play();
+
+      // Update state to indicate that the audio is playing
+      setState(() {
+        _isPlaying = true;
+        _loadingScreen = false;
+      });
+
+      // Fetch the secondary audio
+      await _fetchSecondaryAudio();
+    }
+
+    setState(() {
+      _isGenerating = false;
+    });
   }
 
   @override
@@ -204,93 +503,55 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
           ),
 
           // Skeleton Loading Screen
-          if (_loadingScreen)
+          if (_loadingScreen || _isGenerating)
             Container(
-              color: const Color(0xFF1A1A1A).withOpacity(0.8),
-              child: Column(
-                children: [
-                  // Skeleton for the main container
-                  Padding(
-                    padding: const EdgeInsets.only(top: 100),
-                    child: Container(
-                      height: 400,
-                      width: MediaQuery.of(context).size.width - 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2C2C2C),
-                        borderRadius: BorderRadius.circular(10),
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(
+                          widget._isHeartbeatMusic
+                              ? const Color(0xFFDD7CA9)
+                              : const Color(0xFFDBD897)),
+                      strokeWidth: 4,
+                    ),
+                    const SizedBox(height: 30),
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [
+                          Colors.white,
+                          widget._isHeartbeatMusic
+                              ? const Color(0xFFDD7CA9)
+                              : const Color(0xFFDBD897)
+                        ],
+                      ).createShader(bounds),
+                      child: const Text(
+                        'Generating and playing tracks you want...',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                  ),
-
-                  // Skeleton for the progress bar
-                  Padding(
-                    padding: const EdgeInsets.only(top: 30),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 3,
-                          width: MediaQuery.of(context).size.width - 40,
-                          color: const Color(0xFF2C2C2C),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 10,
-                              color: const Color(0xFF2C2C2C),
-                            ),
-                            Container(
-                              width: 50,
-                              height: 10,
-                              color: const Color(0xFF2C2C2C),
-                            ),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Analyzing text patterns\nGenerating musical elements\nFinalizing composition',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-
-                  // Skeleton for the controls
-                  Padding(
-                    padding: const EdgeInsets.only(top: 30),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2C),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        Container(
-                          width: 90,
-                          height: 90,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2C),
-                            borderRadius: BorderRadius.circular(45),
-                          ),
-                        ),
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2C),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
           // Main Content (Visible when loadingScreen is false)
-          if (!_loadingScreen)
+          if (!_loadingScreen && !_isGenerating)
             Padding(
               padding: const EdgeInsets.all(20),
               child: ListView(
@@ -398,8 +659,6 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
                                           child: Image.asset(
                                             widget.url,
                                             fit: BoxFit.cover,
-                                            // width: 60,
-                                            // height: 60,
                                           ),
                                         ),
                                       ),
@@ -484,10 +743,7 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
                             color: Colors.white,
                             size: 30,
                           ),
-                          onPressed: () {
-                            _audioPlayer.seek(Duration.zero);
-                            if (!_isPlaying) _togglePlayPause();
-                          },
+                          onPressed: _regenerateMusic,
                         ),
                       ],
                     ),

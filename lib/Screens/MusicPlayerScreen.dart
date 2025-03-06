@@ -1,9 +1,15 @@
+// ignore_for_file: file_names, must_be_immutable
+
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 class MusicPlayerScreen extends StatefulWidget {
-  const MusicPlayerScreen({Key? key}) : super(key: key);
+  File music;
+  String propmt;
+  MusicPlayerScreen({required this.music, required this.propmt, super.key});
 
   @override
   State<MusicPlayerScreen> createState() => _MusicPlayerScreenState();
@@ -11,13 +17,19 @@ class MusicPlayerScreen extends StatefulWidget {
 
 class _MusicPlayerScreenState extends State<MusicPlayerScreen>
     with SingleTickerProviderStateMixin {
-  late AudioPlayer _audioPlayer;
+  final AudioPlayer _audioPlayer =
+      AudioPlayer(); // Use just_audio's AudioPlayer
   bool _isPlaying = false;
   bool _isLiked = false; // Track like state
   double _currentPosition = 0;
   double _totalDuration = 1;
   final Duration _duration = const Duration(milliseconds: 440);
   bool _loadingScreen = false; // Add loading state
+
+  // Stream subscriptions
+  StreamSubscription? _positionStreamSubscription;
+  StreamSubscription? _durationStreamSubscription;
+  StreamSubscription? _playerStateStreamSubscription;
 
   // Default Colors
   var topLeft = const Color(0xFF2A2A2A); // Light Deep Charcoal
@@ -40,7 +52,6 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
     _initAudio();
 
     // Initialize animation controller for like button
@@ -60,16 +71,38 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
 
   Future<void> _initAudio() async {
     try {
-      await _audioPlayer.setAsset('assets/music/song.mp3');
-      _audioPlayer.positionStream.listen((position) {
-        setState(() {
-          _currentPosition = position.inMilliseconds.toDouble();
-        });
+      // Load the audio file using just_audio
+      await _audioPlayer.setFilePath(widget.music.path);
+
+      // Listen to position updates
+      _positionStreamSubscription =
+          _audioPlayer.positionStream.listen((position) {
+        if (mounted) {
+          setState(() {
+            _currentPosition = position.inMilliseconds.toDouble();
+          });
+        }
       });
-      _audioPlayer.durationStream.listen((duration) {
-        setState(() {
-          _totalDuration = duration?.inMilliseconds.toDouble() ?? 1;
-        });
+
+      // Listen to duration updates
+      _durationStreamSubscription =
+          _audioPlayer.durationStream.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _totalDuration = duration?.inMilliseconds.toDouble() ?? 1;
+          });
+        }
+      });
+
+      // Listen to player state updates
+      _playerStateStreamSubscription =
+          _audioPlayer.playerStateStream.listen((playerState) {
+        if (playerState.processingState == ProcessingState.completed &&
+            mounted) {
+          setState(() {
+            _isPlaying = false;
+          });
+        }
       });
     } catch (e) {
       print("Error loading audio: $e");
@@ -77,23 +110,33 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
   }
 
   void _togglePlayPause() async {
-    setState(() => _isPlaying = !_isPlaying);
-    _isPlaying ? await _audioPlayer.play() : await _audioPlayer.pause();
+    if (mounted) {
+      setState(() => _isPlaying = !_isPlaying);
+      _isPlaying ? await _audioPlayer.play() : await _audioPlayer.pause();
+    }
   }
 
   void _toggleLike() {
-    setState(() {
-      _isLiked = !_isLiked;
-      if (_isLiked) {
-        _likeAnimationController.forward();
-      } else {
-        _likeAnimationController.reverse();
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _isLiked = !_isLiked;
+        if (_isLiked) {
+          _likeAnimationController.forward();
+        } else {
+          _likeAnimationController.reverse();
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    // Cancel all stream subscriptions
+    _positionStreamSubscription?.cancel();
+    _durationStreamSubscription?.cancel();
+    _playerStateStreamSubscription?.cancel();
+
+    // Dispose of the audio player and animation controller
     _audioPlayer.dispose();
     _likeAnimationController.dispose();
     super.dispose();
@@ -118,7 +161,9 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
       ),
       body: Stack(
@@ -366,7 +411,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                               child: Padding(
                                 padding: const EdgeInsets.all(20),
                                 child: Text(
-                                  "Generated music in your mood.",
+                                  widget.propmt,
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
@@ -410,8 +456,8 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen>
                             min: 0,
                             max: _totalDuration,
                             onChanged: (value) async {
-                              await _audioPlayer.seek(
-                                  Duration(milliseconds: value.toInt()));
+                              await _audioPlayer
+                                  .seek(Duration(milliseconds: value.toInt()));
                             },
                           ),
                         ),

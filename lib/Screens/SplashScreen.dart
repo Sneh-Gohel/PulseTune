@@ -84,11 +84,12 @@ class _SplashScreen extends State<SplashScreen>
             }
           } catch (e) {
             print("Incorrect credentials");
-            if (e.toString().contains("auth credential is incorrect")) {
-              Navigator.of(context).pushReplacement(
-                ScreenChanger.slideUpTransition(const LoginScreen()),
-              );
-            }
+            Navigator.of(context).pushReplacement(
+              ScreenChanger.slideUpTransition(const LoginScreen()),
+            );
+            // if (e.toString().contains("auth credential is incorrect")) {
+
+            // }
           }
         } else {
           print("File doesn't exists");

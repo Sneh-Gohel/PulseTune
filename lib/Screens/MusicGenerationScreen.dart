@@ -1,7 +1,16 @@
+// ignore_for_file: file_names
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Screens/MusicPlayerScreen.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MusicGenerationScreen extends StatefulWidget {
   const MusicGenerationScreen({super.key});
@@ -17,7 +26,6 @@ class _MusicGenerationScreenState extends State<MusicGenerationScreen>
   bool _isGenerating = false;
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-
   final List<int> _durations = [30, 45, 60, 120];
   int _remainingWords = 150;
 
@@ -44,25 +52,152 @@ class _MusicGenerationScreenState extends State<MusicGenerationScreen>
     super.dispose();
   }
 
-  void _generateMusic() {
-    if (_textController.text.isEmpty) return;
+  String generate6CharCode() {
+    const String lowercaseLetters = 'abcdefghijklmnopqrstuvwxyz';
+    const String uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const String numbers = '0123456789';
+
+    // Combine all possible characters for the first 5 characters
+    const String allChars = lowercaseLetters + uppercaseLetters + numbers;
+
+    // Combine only alphabets for the last character
+    const String alphabets = lowercaseLetters + uppercaseLetters;
+
+    // Create a Random object
+    final Random random = Random();
+
+    // Generate the first 5 characters
+    String code = '';
+    for (int i = 0; i < 5; i++) {
+      // Pick a random index from the combined characters
+      int randomIndex = random.nextInt(allChars.length);
+      // Append the character at the random index to the code
+      code += allChars[randomIndex];
+    }
+
+    // Generate the last character (must be an alphabet)
+    int randomIndex = random.nextInt(alphabets.length);
+    code += alphabets[randomIndex];
+    print(code);
+
+    return code;
+  }
+
+  Future<File?> generateAudio({
+    required String api,
+    required String prompt,
+    required int duration,
+    required String name,
+  }) async {
+    if (_textController.text.isEmpty) return null;
 
     setState(() {
       _isGenerating = true;
     });
 
-    // Simulate generation process
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    String serverIP = "";
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Fetch the document from the "Server" collection with ID "Current_ip"
+      final docSnapshot =
+          await firestore.collection('Server').doc('Current_ip').get();
+
+      if (docSnapshot.exists) {
+        // Extract the IP address from the document
+        final ipAddress = docSnapshot.data()?['ip'] ?? "No IP found";
         setState(() {
-          _isGenerating = false;
+          serverIP = ipAddress;
         });
-        Navigator.of(context).push(
-          ScreenChanger.slideUpTransition(const MusicPlayerScreen()),
-        );
+        print('Fetched server IP: $serverIP');
+      } else {
+        print('Error: Firestore document "Current_ip" does not exist.');
+        return null;
       }
-    });
+    } catch (e) {
+      print('Error fetching server IP from Firestore: $e');
+      return null;
+    }
+
+    final Uri url = Uri.parse('http://$serverIP:5000/run-script');
+    print('Sending request to: $url');
+
+    final Map<String, dynamic> requestData = {
+      "api": api,
+      "prompt": prompt,
+      "duration": duration,
+      "name": name,
+    };
+
+    try {
+      final http.Response response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode(requestData),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+
+        // Save the audio file locally
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$name.mp3');
+        await file.writeAsBytes(bytes);
+
+        print('Audio saved to: ${file.path}');
+
+        Navigator.of(context).push(
+          ScreenChanger.slideUpTransition(MusicPlayerScreen(
+            music: file,
+            propmt: _textController.text,
+          )),
+        );
+
+        return file;
+      } else {
+        print('Failed to generate audio. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+    } on TimeoutException catch (e) {
+      print('Request timed out: $e');
+    } catch (e) {
+      print('Error: $e');
+    } finally {
+      setState(() {
+        _isGenerating = false;
+      });
+    }
+    return null;
   }
+
+  // void _generateMusic() {
+  //   if (_textController.text.isEmpty) return;
+
+  //   setState(() {
+  //     _isGenerating = true;
+  //   });
+
+  //   // Simulate generation process
+  //   Future.delayed(const Duration(seconds: 3), () {
+  //     if (mounted) {
+  //       setState(() {
+  //         _isGenerating = false;
+  //       });
+  //       Navigator.of(context).push(
+  //         ScreenChanger.slideUpTransition(MusicPlayerScreen(
+  //           music: File('assets/music/song.mp3'),
+  //           propmt: "You Generated music",
+  //         )),
+  //       );
+  //     }
+  //   });
+  // }
 
   String _formatDuration(int seconds) {
     if (seconds < 60) return '${seconds}s';
@@ -127,7 +262,7 @@ class _MusicGenerationScreenState extends State<MusicGenerationScreen>
                         decoration: InputDecoration(
                           hintText:
                               'e.g., "A joyful piano melody with birds singing in the background"',
-                          hintStyle: TextStyle(color: Colors.white38),
+                          hintStyle: const TextStyle(color: Colors.white38),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide.none,
@@ -197,7 +332,12 @@ class _MusicGenerationScreenState extends State<MusicGenerationScreen>
                     );
                   },
                   child: ElevatedButton(
-                    onPressed: _generateMusic,
+                    // onPressed: () => _generateMusic(),
+                    onPressed: () => generateAudio(
+                        api: "prompt_gen",
+                        duration: _selectedDuration,
+                        prompt: _textController.text,
+                        name: generate6CharCode()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFDD7CA9),
                       padding: const EdgeInsets.symmetric(vertical: 18),

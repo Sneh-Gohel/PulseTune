@@ -16,10 +16,12 @@ class InfinityPlayerScreen extends StatefulWidget {
   bool _isHeartbeatMusic = false;
   String url = "";
   String message = "";
+  String heartbeatURL = "";
   InfinityPlayerScreen(
       {required bool isHeartbeatMusic,
       required this.url,
       required this.message,
+      required this.heartbeatURL,
       super.key})
       : _isHeartbeatMusic = isHeartbeatMusic;
 
@@ -429,7 +431,7 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
     final Map<String, dynamic> requestData = {
       "api": "heart_rate",
       "name": "user_heartbeat_music",
-      "url": "https://app.hyperate.io/D8EF"
+      "url": widget.heartbeatURL,
     };
 
     try {
@@ -547,7 +549,7 @@ class _InfinityPlayerScreen extends State<InfinityPlayerScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          widget._isHeartbeatMusic ? 'Sync Your Music with 💗' : widget.message,
+          widget._isHeartbeatMusic ? 'Sync Your Music with 💗' : widget.message.split(' ')[0],
           style: const TextStyle(
             color: Colors.white,
             fontSize: 22,

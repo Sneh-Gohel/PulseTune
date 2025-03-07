@@ -25,6 +25,7 @@ class BigBoxes extends StatelessWidget {
               isHeartbeatMusic: false,
               url: image,
               message: "$title bigBox",
+              heartbeatURL: "",
             ),
           ),
         );

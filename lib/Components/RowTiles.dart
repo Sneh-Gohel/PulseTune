@@ -33,6 +33,7 @@ class Rowtiles extends StatelessWidget {
                   isHeartbeatMusic: false,
                   url: image_1,
                   message: title_1,
+                  heartbeatURL: "",
                 ),
               ),
             );
@@ -94,6 +95,7 @@ class Rowtiles extends StatelessWidget {
                   isHeartbeatMusic: false,
                   url: image_2,
                   message: title_2,
+                  heartbeatURL: "",
                 ),
               ),
             );

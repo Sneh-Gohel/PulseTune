@@ -7,7 +7,7 @@ import 'package:plusetune/Components/BigBoxes.dart';
 import 'package:plusetune/Components/RowTiles.dart';
 import 'package:plusetune/Components/ScreenChanger.dart';
 import 'package:plusetune/Components/SuffleBox.dart';
-import 'package:plusetune/Screens/HeartBeatAnalizingScreen.dart';
+import 'package:plusetune/Screens/HeartbeatURLScreen.dart';
 import 'package:plusetune/Screens/InfinityPlayerScreen.dart';
 import 'package:plusetune/Screens/MusicGenerationScreen.dart';
 import 'package:shimmer/shimmer.dart';
@@ -273,7 +273,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {
                     Navigator.of(context).push(
                       ScreenChanger.slideUpTransition(
-                        InfinityPlayerScreen(isHeartbeatMusic: true,url: "",message: "",),
+                        // InfinityPlayerScreen(isHeartbeatMusic: true,url: "",message: "",),
+                        const HeartbeatURLScreen(),
                       ),
                     );
                   },
